@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Manipulation Example</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 100px;
+        }
+
+        h1 {
+            padding: 20px;
+            transition: 0.3s;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Welcome to KRMU</h1>
+
+    <button>Change</button>
+
+    <script>
+        // Select elements
+        const heading = document.querySelector("h1");
+        const button = document.querySelector("button");
+
+        // Add click event
+        button.addEventListener("click", () => {
+            heading.textContent = "Welcome to Bootcamp";
+            heading.style.backgroundColor = "tomato";
+            heading.style.color = "white";
+        });
+    </script>
+
+</body>
+</html>
