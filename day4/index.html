@@ -114,8 +114,13 @@
 
     .api-key-row {
       display: flex;
+      flex-direction: column;
       gap: 8px;
       margin-bottom: 20px;
+    }
+    .api-input-container {
+      display: flex;
+      gap: 8px;
     }
     .api-key-row input {
       flex: 1;
@@ -133,6 +138,14 @@
       background: #4ade80;
       color: #0a1628;
       padding: 11px 18px;
+    }
+    .btn-demo {
+      background: var(--frost);
+      color: var(--accent2);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      align-self: center;
     }
 
     /* ── Status / Error ── */
@@ -291,18 +304,19 @@
     <p>Current temperature &amp; conditions</p>
   </div>
 
-  <!-- API Key setup -->
   <div class="api-notice" id="apiNotice">
     <strong>Setup required:</strong> This app uses the free
     <a href="https://openweathermap.org/api" target="_blank">OpenWeatherMap API</a>.
-    Get a free key at <strong>openweathermap.org → Sign Up → API keys</strong>, then paste it below.
+    Get a free key at <strong>openweathermap.org → Sign Up → API keys</strong>, or click Demo Mode below.
   </div>
   <div class="api-key-row" id="apiKeyRow">
-    <input type="text" id="apiKeyInput" placeholder="Paste your API key here…"/>
-    <button class="btn btn-save" onclick="saveKey()">Save</button>
+    <div class="api-input-container">
+      <input type="text" id="apiKeyInput" placeholder="Paste your API key here…"/>
+      <button class="btn btn-save" onclick="saveKey()">Save</button>
+    </div>
+    <button class="btn btn-demo" onclick="enableDemoMode()">✨ Run in Demo Mode (No Key Needed)</button>
   </div>
 
-  <!-- Search -->
   <div class="search-row">
     <input type="text" id="cityInput" placeholder="Enter city name…" onkeydown="if(event.key==='Enter')searchCity()"/>
     <button class="btn btn-primary" id="searchBtn" onclick="searchCity()">Search</button>
@@ -312,7 +326,6 @@
   <div id="errorBox" class="error-box hidden"></div>
   <div id="statusMsg" class="status">Enter a city name or use 📍 for your current location.</div>
 
-  <!-- Weather Card -->
   <div class="card hidden" id="weatherCard">
     <div class="card-hero">
       <div class="feels-like">
@@ -371,8 +384,10 @@
 </div>
 
 <script>
-  const API_KEY_STORAGE = '421f4e5c5a7aec57350a02aed0878d72';
+  // Fixed variable logic
+  const API_KEY_STORAGE = 'openweathermap_api_key';
   let apiKey = localStorage.getItem(API_KEY_STORAGE) || '';
+  let isDemoMode = false;
 
   const weatherIconMap = {
     '01': '☀️', '02': '⛅', '03': '☁️', '04': '☁️',
@@ -381,19 +396,30 @@
 
   function init() {
     if (apiKey) {
-      document.getElementById('apiNotice').classList.add('hidden');
-      document.getElementById('apiKeyRow').classList.add('hidden');
+      hideApiSetup();
     }
+  }
+
+  function hideApiSetup() {
+    document.getElementById('apiNotice').classList.add('hidden');
+    document.getElementById('apiKeyRow').classList.add('hidden');
   }
 
   function saveKey() {
     const val = document.getElementById('apiKeyInput').value.trim();
     if (!val) { showError('Please enter a valid API key.'); return; }
     apiKey = val;
+    isDemoMode = false;
     localStorage.setItem(API_KEY_STORAGE, apiKey);
-    document.getElementById('apiNotice').classList.add('hidden');
-    document.getElementById('apiKeyRow').classList.add('hidden');
+    hideApiSetup();
     showStatus('API key saved! Now search for a city or use your location.');
+  }
+
+  function enableDemoMode() {
+    isDemoMode = true;
+    apiKey = 'demo_mode_active';
+    hideApiSetup();
+    showStatus('✨ Demo Mode Active! Type any city name to see fake interactive weather.');
   }
 
   function showError(msg) {
@@ -419,15 +445,32 @@
     btn.textContent = on ? '⏳' : 'Search';
   }
 
-  async function fetchWeather(url) {
+  async function fetchWeather(url, cityName = '') {
     if (!apiKey) {
-      showError('Please enter your OpenWeatherMap API key first.');
+      showError('Please enter your OpenWeatherMap API key first or use Demo Mode.');
       return;
     }
     setLoading(true);
     document.getElementById('errorBox').classList.add('hidden');
     document.getElementById('statusMsg').textContent = '⏳ Fetching weather…';
     document.getElementById('statusMsg').classList.remove('hidden');
+
+    if (isDemoMode) {
+      // Fake Data Generation for Demo Mode
+      setTimeout(() => {
+        const dummyData = {
+          name: cityName || "Demo City",
+          cod: 200,
+          sys: { country: "IN", sunrise: Math.floor(Date.now()/1000) - 14400, sunset: Math.floor(Date.now()/1000) + 14400 },
+          main: { temp: Math.floor(Math.random() * 15) + 22, feels_like: Math.floor(Math.random() * 15) + 24, humidity: 62, pressure: 1012 },
+          weather: [{ icon: "01d", description: "Clear Beautiful Sky (Demo Mode)" }],
+          wind: { speed: 4.5 }
+        };
+        renderWeather(dummyData);
+        setLoading(false);
+      }, 600);
+      return;
+    }
 
     try {
       const res = await fetch(url);
@@ -449,10 +492,14 @@
     const city = document.getElementById('cityInput').value.trim();
     if (!city) { showError('Please enter a city name.'); return; }
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`;
-    fetchWeather(url);
+    fetchWeather(url, city);
   }
 
   function getLocation() {
+    if (isDemoMode) {
+      fetchWeather('', 'Your Current Location');
+      return;
+    }
     if (!navigator.geolocation) { showError('Geolocation not supported by your browser.'); return; }
     document.getElementById('statusMsg').textContent = '📍 Getting your location…';
     document.getElementById('statusMsg').classList.remove('hidden');
