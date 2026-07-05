@@ -1,0 +1,2 @@
+[2026-07-01T13:10:05.357Z] ERROR: DB connection failed: querySrv ECONNREFUSED _mongodb._tcp.cluster0.mewd6ob.mongodb.net
+[2026-07-01T13:13:11.049Z] ERROR: DB connection failed: querySrv ECONNREFUSED _mongodb._tcp.cluster0.mewd6ob.mongodb.net
