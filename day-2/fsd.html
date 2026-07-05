@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Physics Sandbox</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; overflow: hidden; font-family: 'Inter', sans-serif; }
+
+  #root { width: 100vw; height: 100vh; }
+
+  #ui {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .panel {
+    background: rgba(10,10,20,0.82);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 12px 14px;
+    pointer-events: all;
+    backdrop-filter: blur(10px);
+  }
+
+  .panel-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 10px;
+  }
+
+  .obj-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .obj-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.75);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .obj-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); }
+  .obj-btn.active { background: rgba(99,102,241,0.25); border-color: rgba(99,102,241,0.7); color: #fff; }
+  .obj-btn .icon { font-size: 18px; }
+
+  .prop-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .prop-row:last-child { margin-bottom: 0; }
+  .prop-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    width: 60px;
+    flex-shrink: 0;
+  }
+  .prop-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.12);
+    outline: none;
+    cursor: pointer;
+  }
+  .prop-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(99,102,241,1);
+    cursor: pointer;
+  }
+  .prop-val {
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    width: 30px;
+    text-align: right;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 6px;
+  }
+  .action-btn {
+    flex: 1;
+    padding: 7px 0;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.65);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  .action-btn.danger { border-color: rgba(239,68,68,0.35); }
+  .action-btn.danger:hover { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.6); color: #fca5a5; }
+
+  #hints {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hint-tag {
+    background: rgba(10,10,20,0.75);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.05em;
+    backdrop-filter: blur(8px);
+  }
+  .hint-tag b { color: rgba(255,255,255,0.65); font-weight: 500; }
+
+  #crosshair {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 20px; height: 20px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(255,255,255,0.6);
+  }
+  #crosshair::before { width: 2px; height: 100%; top: 0; left: 50%; transform: translateX(-50%); }
+  #crosshair::after  { width: 100%; height: 2px; top: 50%; left: 0; transform: translateY(-50%); }
+
+  #stats-bar {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: rgba(10,10,20,0.82);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.07em;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+    line-height: 1.8;
+  }
+  #stats-bar span { color: rgba(255,255,255,0.7); }
+
+  #throw-indicator {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    z-index: 10;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #throw-indicator.charging { opacity: 1; }
+  #throw-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #ec4899);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.05s;
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="root"></div>
+<div id="crosshair"></div>
+
+<div id="ui">
+  <!-- Object picker -->
+  <div class="panel">
+    <div class="panel-title">Spawn Object</div>
+    <div class="obj-grid">
+      <button class="obj-btn active" data-shape="box" onclick="selectShape('box')">
+        <span class="icon">⬛</span>Box
+      </button>
+      <button class="obj-btn" data-shape="sphere" onclick="selectShape('sphere')">
+        <span class="icon">⚽</span>Sphere
+      </button>
+      <button class="obj-btn" data-shape="cylinder" onclick="selectShape('cylinder')">
+        <span class="icon">🥫</span>Cylinder
+      </button>
+      <button class="obj-btn" data-shape="cone" onclick="selectShape('cone')">
+        <span class="icon">🔺</span>Cone
+      </button>
+      <button class="obj-btn" data-shape="torus" onclick="selectShape('torus')">
+        <span class="icon">🍩</span>Torus
+      </button>
+      <button class="obj-btn" data-shape="capsule" onclick="selectShape('capsule')">
+        <span class="icon">💊</span>Capsule
+      </button>
+    </div>
+  </div>
+
+  <!-- Properties -->
+  <div class="panel">
+    <div class="panel-title">Properties</div>
+    <div class="prop-row">
+      <span class="prop-label">Size</span>
+      <input type="range" class="prop-slider" id="sizeSlider" min="0.2" max="2.0" step="0.05" value="0.5" oninput="updateProp('size', this.value)">
+      <span class="prop-val" id="sizeVal">0.5</span>
+    </div>
+    <div class="prop-row">
+      <span class="prop-label">Mass</span>
+      <input type="range" class="prop-slider" id="massSlider" min="0.1" max="10" step="0.1" value="1" oninput="updateProp('mass', this.value)">
+      <span class="prop-val" id="massVal">1.0</span>
+    </div>
+    <div class="prop-row">
+      <span class="prop-label">Bounce</span>
+      <input type="range" class="prop-slider" id="bounceSlider" min="0" max="0.95" step="0.05" value="0.3" oninput="updateProp('bounce', this.value)">
+      <span class="prop-val" id="bounceVal">0.3</span>
+    </div>
+    <div class="prop-row">
+      <span class="prop-label">Friction</span>
+      <input type="range" class="prop-slider" id="frictionSlider" min="0" max="1" step="0.05" value="0.4" oninput="updateProp('friction', this.value)">
+      <span class="prop-val" id="frictionVal">0.4</span>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="panel">
+    <div class="panel-title">Actions</div>
+    <div class="action-row">
+      <button class="action-btn" onclick="spawnRandom()">🎲 Random</button>
+      <button class="action-btn" onclick="explode()">💥 Explode</button>
+    </div>
+    <div style="margin-top:6px">
+      <button class="action-btn danger" style="width:100%" onclick="clearAll()">🗑 Clear All</button>
+    </div>
+  </div>
+</div>
+
+<div id="stats-bar">
+  Objects: <span id="objCount">0</span> &nbsp;|&nbsp; FPS: <span id="fps">60</span>
+</div>
+
+<div id="throw-indicator"><div id="throw-fill"></div></div>
+
+<div id="hints">
+  <div class="hint-tag"><b>Click</b> throw · <b>Hold</b> charge</div>
+  <div class="hint-tag"><b>Right-drag</b> orbit</div>
+  <div class="hint-tag"><b>Scroll</b> zoom</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── CANNON.js via CDN ──────────────────────────────────────────
+const CANNON = await import('https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js');
+
+// ── State ──────────────────────────────────────────────────────
+let selectedShape = 'box';
+let props = { size: 0.5, mass: 1.0, bounce: 0.3, friction: 0.4 };
+let objects = []; // { mesh, body }
+let isCharging = false;
+let chargeStart = 0;
+const MAX_CHARGE = 1400; // ms
+let frameCount = 0, lastFPSTime = performance.now();
+
+// ── Three.js setup ─────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0d1a);
+scene.fog = new THREE.FogExp2(0x0d0d1a, 0.022);
+
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(0, 8, 20);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.getElementById('root').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+controls.minDistance = 3;
+controls.maxDistance = 80;
+controls.maxPolarAngle = Math.PI / 2.05;
+controls.target.set(0, 2, 0);
+
+// ── Lighting ───────────────────────────────────────────────────
+const ambient = new THREE.AmbientLight(0x6070a0, 0.6);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.8);
+sun.position.set(12, 20, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 80;
+sun.shadow.camera.left = -25;
+sun.shadow.camera.right = 25;
+sun.shadow.camera.top = 25;
+sun.shadow.camera.bottom = -25;
+sun.shadow.bias = -0.001;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0x4060c0, 0.5);
+fill.position.set(-8, 5, -5);
+scene.add(fill);
+
+const rim = new THREE.PointLight(0x8866ff, 1.2, 40);
+rim.position.set(-10, 15, -10);
+scene.add(rim);
+
+// ── Ground ─────────────────────────────────────────────────────
+const GROUND_Y = 0;
+
+// Floor mesh
+const floorGeo = new THREE.PlaneGeometry(60, 60, 30, 30);
+const floorMat = new THREE.MeshStandardMaterial({
+  color: 0x1a1a2e, roughness: 0.9, metalness: 0.0,
+});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.name = 'floor';
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = GROUND_Y;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Grid
+const grid = new THREE.GridHelper(60, 40, 0x2a2a4a, 0x1e1e35);
+grid.position.y = GROUND_Y + 0.002;
+scene.add(grid);
+
+// ── Cannon.js physics world ────────────────────────────────────
+const world = new CANNON.World({
+  gravity: new CANNON.Vec3(0, -20, 0),
+});
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.allowSleep = true;
+world.solver.iterations = 20;
+
+// Ground body
+const groundMat = new CANNON.Material('ground');
+const groundBody = new CANNON.Body({ mass: 0, material: groundMat });
+groundBody.addShape(new CANNON.Plane());
+groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+groundBody.position.y = GROUND_Y;
+world.addBody(groundBody);
+
+// Default contact material
+const defaultMat = new CANNON.Material('default');
+const contactMat = new CANNON.ContactMaterial(groundMat, defaultMat, {
+  friction: 0.5, restitution: 0.3
+});
+world.addContactMaterial(contactMat);
+
+// ── Color palette ──────────────────────────────────────────────
+const PALETTE = [
+  0x6366f1, 0xec4899, 0x22d3ee, 0xf59e0b, 0x10b981,
+  0xf97316, 0xa855f7, 0xef4444, 0x84cc16, 0x06b6d4
+];
+let colorIndex = 0;
+function nextColor() { return PALETTE[(colorIndex++) % PALETTE.length]; }
+
+// ── Shape helpers ──────────────────────────────────────────────
+function createThreeGeometry(shape, size) {
+  switch (shape) {
+    case 'box':      return new THREE.BoxGeometry(size, size, size);
+    case 'sphere':   return new THREE.SphereGeometry(size * 0.55, 24, 24);
+    case 'cylinder': return new THREE.CylinderGeometry(size * 0.4, size * 0.4, size * 1.2, 20);
+    case 'cone':     return new THREE.ConeGeometry(size * 0.45, size * 1.3, 16);
+    case 'torus':    return new THREE.TorusGeometry(size * 0.38, size * 0.15, 12, 32);
+    case 'capsule':  return new THREE.CapsuleGeometry(size * 0.3, size * 0.6, 8, 16);
+    default:         return new THREE.BoxGeometry(size, size, size);
+  }
+}
+
+function createCannonShape(shape, size) {
+  switch (shape) {
+    case 'box':      return new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2));
+    case 'sphere':   return new CANNON.Sphere(size * 0.55);
+    case 'cylinder': return new CANNON.Cylinder(size*0.4, size*0.4, size*1.2, 12);
+    case 'cone':     return new CANNON.Cylinder(0.01, size*0.45, size*1.3, 10);
+    case 'torus':    return new CANNON.Sphere(size * 0.48); // approx
+    case 'capsule':  return new CANNON.Sphere(size * 0.42); // approx
+    default:         return new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2));
+  }
+}
+
+// ── Spawn object ───────────────────────────────────────────────
+function spawnObject(shape, size, mass, bounce, friction, position, velocity) {
+  const color = nextColor();
+  const geo = createThreeGeometry(shape, size);
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.45,
+    metalness: 0.2,
+    emissive: color,
+    emissiveIntensity: 0.04,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = `obj_${objects.length}`;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  const objMat = new CANNON.Material('obj');
+  const cc = new CANNON.ContactMaterial(groundMat, objMat, { friction, restitution: bounce });
+  const cc2 = new CANNON.ContactMaterial(defaultMat, objMat, { friction, restitution: bounce });
+  const cc3 = new CANNON.ContactMaterial(objMat, objMat, { friction, restitution: bounce * 0.8 });
+  world.addContactMaterial(cc);
+  world.addContactMaterial(cc2);
+  world.addContactMaterial(cc3);
+
+  const body = new CANNON.Body({ mass, material: objMat, allowSleep: true, sleepTimeLimit: 1, sleepSpeedLimit: 0.15 });
+  body.addShape(createCannonShape(shape, size));
+  body.position.set(position.x, position.y, position.z);
+  if (velocity) body.velocity.set(velocity.x, velocity.y, velocity.z);
+  body.angularVelocity.set(
+    (Math.random()-0.5)*6,
+    (Math.random()-0.5)*6,
+    (Math.random()-0.5)*6
+  );
+  world.addBody(body);
+
+  objects.push({ mesh, body, shape, size, color });
+  document.getElementById('objCount').textContent = objects.length;
+}
+
+// ── Throw logic ────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+
+function getThrowOriginAndDir() {
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const origin = camera.position.clone();
+  const dir = raycaster.ray.direction.clone();
+  return { origin, dir };
+}
+
+function doThrow(power) {
+  const { origin, dir } = getThrowOriginAndDir();
+  const speed = 10 + power * 35;
+  const spawnPos = origin.clone().addScaledVector(dir, 1.5);
+  const vel = dir.clone().multiplyScalar(speed);
+  spawnObject(
+    selectedShape, props.size, props.mass, props.bounce, props.friction,
+    spawnPos, vel
+  );
+}
+
+// Mouse events
+const canvas = renderer.domElement;
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  isCharging = true;
+  chargeStart = performance.now();
+  document.getElementById('throw-indicator').classList.add('charging');
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (e.button !== 0 || !isCharging) return;
+  const held = Math.min(performance.now() - chargeStart, MAX_CHARGE);
+  const power = held / MAX_CHARGE;
+  doThrow(power);
+  isCharging = false;
+  document.getElementById('throw-indicator').classList.remove('charging');
+  document.getElementById('throw-fill').style.width = '0%';
+});
+
+canvas.addEventListener('mouseleave', () => {
+  if (isCharging) {
+    const held = Math.min(performance.now() - chargeStart, MAX_CHARGE);
+    doThrow(held / MAX_CHARGE);
+    isCharging = false;
+    document.getElementById('throw-indicator').classList.remove('charging');
+    document.getElementById('throw-fill').style.width = '0%';
+  }
+});
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  isCharging = true;
+  chargeStart = performance.now();
+  document.getElementById('throw-indicator').classList.add('charging');
+}, { passive: true });
+
+canvas.addEventListener('touchend', e => {
+  if (!isCharging) return;
+  const held = Math.min(performance.now() - chargeStart, MAX_CHARGE);
+  doThrow(held / MAX_CHARGE);
+  isCharging = false;
+  document.getElementById('throw-indicator').classList.remove('charging');
+  document.getElementById('throw-fill').style.width = '0%';
+});
+
+// ── Explosion ──────────────────────────────────────────────────
+window.explode = function() {
+  objects.forEach(({ body }) => {
+    const dir = body.position.vsub(new CANNON.Vec3(0, 0, 0));
+    const len = dir.length() || 1;
+    dir.normalize();
+    const force = 300 / (len * 0.4 + 1);
+    body.wakeUp();
+    body.applyImpulse(
+      new CANNON.Vec3(dir.x * force, Math.abs(dir.y * force) + 40, dir.z * force),
+      body.position
+    );
+    body.angularVelocity.set(
+      (Math.random()-0.5)*20,
+      (Math.random()-0.5)*20,
+      (Math.random()-0.5)*20
+    );
+  });
+};
+
+// ── Spawn random ───────────────────────────────────────────────
+window.spawnRandom = function() {
+  const shapes = ['box','sphere','cylinder','cone','torus','capsule'];
+  const s = shapes[Math.floor(Math.random() * shapes.length)];
+  const sz = 0.3 + Math.random() * 1.2;
+  spawnObject(
+    s, sz,
+    0.5 + Math.random() * 5,
+    Math.random() * 0.7,
+    0.2 + Math.random() * 0.5,
+    { x: (Math.random()-0.5)*6, y: 10 + Math.random()*8, z: (Math.random()-0.5)*6 },
+    { x: (Math.random()-0.5)*2, y: 0, z: (Math.random()-0.5)*2 }
+  );
+};
+
+// ── Clear all ──────────────────────────────────────────────────
+window.clearAll = function() {
+  objects.forEach(({ mesh, body }) => {
+    scene.remove(mesh);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+    world.removeBody(body);
+  });
+  objects = [];
+  document.getElementById('objCount').textContent = 0;
+};
+
+// ── Globals for UI callbacks ───────────────────────────────────
+window.selectShape = function(shape) {
+  selectedShape = shape;
+  document.querySelectorAll('.obj-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-shape="${shape}"]`).classList.add('active');
+};
+
+window.updateProp = function(key, val) {
+  props[key] = parseFloat(val);
+  document.getElementById(`${key}Val`).textContent = parseFloat(val).toFixed(1);
+};
+
+// ── Spark particles on collision ───────────────────────────────
+const sparks = [];
+
+function makeSpark(pos, color) {
+  const count = 8;
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const velocities = [];
+  for (let i = 0; i < count; i++) {
+    positions[i*3]   = pos.x;
+    positions[i*3+1] = pos.y;
+    positions[i*3+2] = pos.z;
+    velocities.push(new THREE.Vector3(
+      (Math.random()-0.5)*5,
+      Math.random()*4+1,
+      (Math.random()-0.5)*5
+    ));
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color, size: 0.12, transparent: true, opacity: 1 });
+  const pts = new THREE.Points(geo, mat);
+  pts.name = `spark_${sparks.length}`;
+  scene.add(pts);
+  sparks.push({ pts, velocities, life: 1.0 });
+}
+
+// ── Physics step ──────────────────────────────────────────────
+const FIXED_STEP = 1 / 60;
+const MAX_SUB = 3;
+
+function syncObjects() {
+  objects.forEach(({ mesh, body }) => {
+    mesh.position.copy(body.position);
+    mesh.quaternion.copy(body.quaternion);
+  });
+}
+
+function pruneObjects() {
+  for (let i = objects.length - 1; i >= 0; i--) {
+    if (objects[i].body.position.y < -30) {
+      scene.remove(objects[i].mesh);
+      objects[i].mesh.geometry.dispose();
+      objects[i].mesh.material.dispose();
+      world.removeBody(objects[i].body);
+      objects.splice(i, 1);
+    }
+  }
+  document.getElementById('objCount').textContent = objects.length;
+}
+
+// ── Render loop ────────────────────────────────────────────────
+let lastTime = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const now = performance.now();
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+
+  // Charge indicator
+  if (isCharging) {
+    const pct = Math.min((now - chargeStart) / MAX_CHARGE * 100, 100);
+    document.getElementById('throw-fill').style.width = pct + '%';
+  }
+
+  // Physics
+  world.step(FIXED_STEP, dt, MAX_SUB);
+  syncObjects();
+
+  // Sparks
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const sp = sparks[i];
+    sp.life -= dt * 1.8;
+    if (sp.life <= 0) {
+      scene.remove(sp.pts);
+      sp.pts.geometry.dispose();
+      sp.pts.material.dispose();
+      sparks.splice(i, 1);
+      continue;
+    }
+    const pos = sp.pts.geometry.attributes.position;
+    for (let j = 0; j < sp.velocities.length; j++) {
+      sp.velocities[j].y -= 9 * dt;
+      pos.array[j*3]   += sp.velocities[j].x * dt;
+      pos.array[j*3+1] += sp.velocities[j].y * dt;
+      pos.array[j*3+2] += sp.velocities[j].z * dt;
+    }
+    pos.needsUpdate = true;
+    sp.pts.material.opacity = sp.life;
+  }
+
+  pruneObjects();
+  controls.update();
+  renderer.render(scene, camera);
+
+  // FPS counter
+  frameCount++;
+  if (now - lastFPSTime > 600) {
+    const fps = Math.round(frameCount / ((now - lastFPSTime) / 1000));
+    document.getElementById('fps').textContent = fps;
+    frameCount = 0;
+    lastFPSTime = now;
+  }
+}
+
+// ── Resize ─────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ── Collision sparks ───────────────────────────────────────────
+world.addEventListener('beginContact', (e) => {
+  const { bodyA, bodyB } = e;
+  const vrel = bodyA.velocity.vsub(bodyB.velocity);
+  const speed = vrel.length();
+  if (speed < 3) return;
+  const pos = bodyA.position.vadd(bodyB.position).scale(0.5);
+  const idx = Math.floor(Math.random() * objects.length);
+  const color = objects[idx]?.color ?? 0xffffff;
+  makeSpark(pos, color);
+});
+
+// ── Seed scene ─────────────────────────────────────────────────
+function seedScene() {
+  const configs = [
+    ['box',      0.7, 2,   0.2,  0.5, {x:0,   y:8,  z:0}],
+    ['sphere',   0.5, 1,   0.6,  0.3, {x:1,   y:12, z:0.5}],
+    ['cylinder', 0.6, 1.5, 0.1,  0.6, {x:-0.5,y:16, z:-0.3}],
+    ['box',      0.9, 3,   0.15, 0.4, {x:0.3, y:20, z:0.2}],
+    ['cone',     0.5, 1,   0.2,  0.5, {x:-0.2,y:24, z:-0.4}],
+  ];
+  configs.forEach(([shape, size, mass, bounce, friction, pos]) => {
+    spawnObject(shape, size, mass, bounce, friction, pos, {x:0,y:0,z:0});
+  });
+}
+seedScene();
+
+animate();
+</script>
+</body>
+</html>

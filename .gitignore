@@ -1,5 +1,14 @@
+<<<<<<< HEAD
 # Logs
 logs
+=======
+#env
+.env
+.env.*
+
+# Logs
+/logs
+>>>>>>> fadff8b0b5af4cc1757b62b54e2409a0136335e0
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -22,3 +31,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+<<<<<<< HEAD
+=======
+
+.env
+.vite
+>>>>>>> fadff8b0b5af4cc1757b62b54e2409a0136335e0
